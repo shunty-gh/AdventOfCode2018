@@ -59,7 +59,7 @@ void Main()
         foreach (var i in Enumerable.Range(claim.left, claim.width))
         {
             if (overlap)
-                continue;
+                break;
                 
             foreach (var j in Enumerable.Range(claim.top, claim.height))
             {
@@ -67,7 +67,7 @@ void Main()
                 if (map[key] != 1)
                 {
                     overlap = true;
-                    continue;
+                    break;
                 }
             }
         }
