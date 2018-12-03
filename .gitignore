@@ -1,0 +1,10 @@
+*.exe
+*.pdb
+*.obj
+a.out
+
+.vs/
+.vscode/tags
+.vscode/.ropeproject
+target/
+bin/
