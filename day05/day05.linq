@@ -27,7 +27,7 @@ void Main()
     // Part 2
     var part2 = part1;
     var removedchar = ' ';
-    const string Alphabet = "ABVDEFGHIJKLMNOPQRSUVWXYZ";
+    const string Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     foreach (var ch in Alphabet)
     {
         var p2 = part1.ToCharArray(); // OR var p2 = input.ToArray(); doesn't make a difference
