@@ -1,0 +1,53 @@
+<Query Kind="Program">
+  <Reference>&lt;RuntimeDirectory&gt;\WPF\PresentationCore.dll</Reference>
+  <Reference>&lt;RuntimeDirectory&gt;\WPF\WindowsBase.dll</Reference>
+  <Reference>&lt;RuntimeDirectory&gt;\System.Xaml.dll</Reference>
+  <Reference>&lt;RuntimeDirectory&gt;\WPF\UIAutomationTypes.dll</Reference>
+  <Reference>&lt;RuntimeDirectory&gt;\System.Configuration.dll</Reference>
+  <Reference>&lt;RuntimeDirectory&gt;\WPF\System.Windows.Input.Manipulations.dll</Reference>
+  <Reference>&lt;RuntimeDirectory&gt;\WPF\UIAutomationProvider.dll</Reference>
+  <Reference>&lt;RuntimeDirectory&gt;\System.Deployment.dll</Reference>
+  <Namespace>System.Windows</Namespace>
+</Query>
+
+void Main()
+{
+    // Advent of Code 2018 https://adventofcode.com/2018
+    // Day 6
+
+    var inputname = Path.Combine(Path.GetDirectoryName(Util.CurrentQueryPath), $"day06-input.txt");
+    var input = File.ReadAllLines(inputname)
+    //var input = new List<string> { "1, 1", "1, 6", "8, 3", "3, 4", "5, 5", "8, 9" }
+        .Select(s => (int.Parse(s.Substring(0, s.IndexOf(','))), int.Parse(s.Substring(s.IndexOf(',') + 1)) ))
+        .ToList<(int x, int y)>();
+
+    var min_x = input.Min(p => p.x) - 1;
+    var min_y = input.Min(p => p.y) - 1;
+    var max_x = input.Max(p => p.x) + 1;
+    var max_y = input.Max(p => p.y) + 1;
+    $"X: {min_x}..{max_x}; Y: {min_y}..{max_y}".Dump();
+    
+    var closest = new Dictionary<(int x, int y), (int x, int y)>();
+    foreach (var x in Enumerable.Range(min_x, max_x - min_x + 1))
+    {
+        foreach (var y in Enumerable.Range(min_y, max_y - min_y + 1))
+        {
+            var close = input.Select(p => (Math.Abs(p.x - x) + Math.Abs(p.y - y), p))
+                .GroupBy(p => p.Item1)
+                .OrderBy(g => g.Key)
+                .FirstOrDefault();
+            if (close != null && close.Count() == 1)
+            {
+                closest.Add((x, y), close.First().p);
+            }
+        }
+    }
+
+    // Exclude any coord where any location it is closest to is on the boundary as this means it will have an infinte area
+    var part1 = closest.GroupBy(c => c.Value)
+        .Where(g => g.All(p => p.Key.x > min_x && p.Key.y > min_y && p.Key.x < max_x && p.Key.y < max_y))
+        .OrderByDescending(g => g.Count())
+        .Select(g => new { g.Key, Count = g.Count() })
+        .First();
+    Console.WriteLine($"Part 1: Co-ordinate {part1.Key} with {part1.Count} locations");
+}
