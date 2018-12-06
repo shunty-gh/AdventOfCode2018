@@ -17,16 +17,16 @@ void Main()
 
     var inputname = Path.Combine(Path.GetDirectoryName(Util.CurrentQueryPath), $"day06-input.txt");
     var input = File.ReadAllLines(inputname)
-    //var input = new List<string> { "1, 1", "1, 6", "8, 3", "3, 4", "5, 5", "8, 9" }
-        .Select(s => (int.Parse(s.Substring(0, s.IndexOf(','))), int.Parse(s.Substring(s.IndexOf(',') + 1)) ))
+    //var input = new List<string> { "1, 1", "1, 6", "8, 3", "3, 4", "5, 5", "8, 9" }  // Test input => Part1 = 17
+        .Select(s => (int.Parse(s.Substring(0, s.IndexOf(','))), int.Parse(s.Substring(s.IndexOf(',') + 1))))
         .ToList<(int x, int y)>();
 
-    var min_x = input.Min(p => p.x) - 1;
-    var min_y = input.Min(p => p.y) - 1;
-    var max_x = input.Max(p => p.x) + 1;
-    var max_y = input.Max(p => p.y) + 1;
+    int min_x = input.Min(p => p.x),
+        min_y = input.Min(p => p.y),
+        max_x = input.Max(p => p.x),
+        max_y = input.Max(p => p.y);
     $"X: {min_x}..{max_x}; Y: {min_y}..{max_y}".Dump();
-    
+
     var closest = new Dictionary<(int x, int y), (int x, int y)>();
     foreach (var x in Enumerable.Range(min_x, max_x - min_x + 1))
     {
@@ -50,4 +50,16 @@ void Main()
         .Select(g => new { g.Key, Count = g.Count() })
         .First();
     Console.WriteLine($"Part 1: Co-ordinate {part1.Key} with {part1.Count} locations");
+
+    // Part 2
+    var dists = new Dictionary<(int x, int y), List<((int x, int y) point, int dist)>>();
+    Enumerable.Range(min_x, max_x - min_x + 1).ToList().ForEach(x =>
+        Enumerable.Range(min_y, max_y - min_y + 1).ToList().ForEach(y =>
+            dists[(x, y)] = input.Select(p => (p, Math.Abs(p.x - x) + Math.Abs(p.y - y))).ToList()));
+
+    var part2 = dists.Select(kvp =>
+        kvp.Value
+            .Sum(v => v.dist))
+            .Count(r => r < 10000);
+    Console.WriteLine($"Part 2: {part2}");
 }
