@@ -17,7 +17,7 @@ void Main()
 
     var inputname = Path.Combine(Path.GetDirectoryName(Util.CurrentQueryPath), $"day07-input.txt");
     var input = File.ReadAllLines(inputname)
-    //var input = TestInput()
+    //var input = TestInput()  // Part 1 => "CABDFE"; Part 2 => 15s
         .Select(s => (s[5], s[36]))
         .ToList<(char A, char B)>();
 
@@ -34,9 +34,12 @@ void Main()
             graph[step.B] = new List<char> { step.A };
     }
 
+    // Part 1
     var complete = new List<char>();
-    // First node is the one that has no dependencies and is the lowest alphabetically
-    var node = graph.Where(kvp => kvp.Value.Count == 0).OrderBy(kvp => kvp.Key).First();
+    // First node is one that has no dependencies and is the lowest alphabetically
+    var node = graph.Where(kvp => kvp.Value.Count == 0)
+        .OrderBy(kvp => kvp.Key)
+        .First();
     while (node.Key != default(char))
     {
         complete.Add(node.Key);
@@ -52,6 +55,47 @@ void Main()
     var part1 = string.Join("", complete);
     Clipboard.SetText(part1);
     Console.WriteLine($"Part 1: {part1}");
+
+    // Part 2
+    const int maxWorkers = 5; // For test input = 2
+    const int baseWorkTime = 60; // For test input = 0
+    var workers = new List<(char step, int startTime, int totalTime)>();
+    complete.Clear();
+    int count = 0;
+    while (true)
+    {
+        // Find any that have completed. Add them to the completed list and remove them from the work list
+        var finished = workers
+            .Where(w => count - w.startTime == w.totalTime)
+            .OrderBy(w => w.step)
+            .Select(w => w.step);
+        complete.AddRange(finished);
+        workers.RemoveAll(w => finished.Contains(w.step));
+
+        // Find work for idle hands
+        while (workers.Count < maxWorkers)
+        {
+            node = graph
+                .Where(kvp => !workers.Any(w => w.step == kvp.Key)) // Exclude any we're already working on
+                .Where(kvp => !complete.Contains(kvp.Key))          // Exclude those already done
+                .Where(kvp => kvp.Value.All(c => complete.Contains(c))) // Only those whose dependencies are all met
+                .OrderBy(kvp => kvp.Key) // Want the lowest, alphabetically
+                .FirstOrDefault();
+            if (node.Key == default(char))
+                break;
+            var worktime = baseWorkTime + (node.Key - 'A' + 1);
+            workers.Add((node.Key, count, worktime));
+        }
+
+        // If nobody's working then we must be all done
+        if (workers.Count == 0)
+            break;
+        // Time marches on
+        count++;
+    }
+
+    var part2 = string.Join("", complete);
+    Console.WriteLine($"Part 2: {part2} took {count} seconds");
 }
 
 public string[] TestInput()
