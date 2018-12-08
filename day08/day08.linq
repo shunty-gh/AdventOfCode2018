@@ -17,7 +17,7 @@ void Main()
 
 	var inputname = Path.Combine(Path.GetDirectoryName(Util.CurrentQueryPath), $"day08-input.txt");
 	var input = File.ReadAllText(inputname)
-	//var input = "2 3 0 3 10 11 12 1 1 0 1 99 2 1 1 2"  // Part 1 => 138
+	//var input = "2 3 0 3 10 11 12 1 1 0 1 99 2 1 1 2"  // Part 1 => 138; Part 2 => 66
 		.Split(new char[] {' '})
 		.Select(s => int.Parse(s))
         .ToList<int>();
@@ -39,11 +39,12 @@ void Main()
 		
 		if (node.ChildCount > node.Children.Count)
 		{
+			// Put the current node back and create empty children on the stack
 			stack.Push(node);
 			for (var nindex = 0; nindex < node.ChildCount; nindex++)
 			{
 				var newnode = new Node(node);
-				node.Children.Add(newnode);
+				node.Children.Insert(0, newnode); // NB: INSERT not ADD because the we want the first one POPped off later to be the first child
 				stack.Push(newnode);
 			}
 		}
@@ -60,6 +61,7 @@ void Main()
 		}
 	}
 	Console.WriteLine($"Part 1: {mtotal}");
+	Console.WriteLine($"Part 2: {root.NodeValue}");
 }
 
 public class Node
@@ -69,9 +71,30 @@ public class Node
 	public int MetaCount { get; set; } = -1;
 	public List<Node> Children { get; } = new List<Node>();
 	public List<int> Metadata { get; } = new List<int>();
-	
+
 	public Node(Node parent)
 	{
 		Parent = parent;
+	}
+
+	public int NodeValue
+	{
+		get
+		{
+			if (ChildCount == 0)
+			{
+				return Metadata.Sum();
+			}
+			else
+			{
+				var result = 0;
+				foreach (var m in Metadata)
+				{			
+					if (m > 0 && m <= Children.Count)
+						result += Children[m - 1].NodeValue;
+				}
+				return result;
+			}
+		}
 	}
 }
