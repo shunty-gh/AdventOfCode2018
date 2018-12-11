@@ -16,8 +16,8 @@ void Main()
     // Day 11
 
     var input = 9221;
-    //var input = 18; // expect 29
-    //var input = 42; // expect 30
+    //var input = 18; // Part 1 expect 29, Part 2 => 90,269,16 
+    //var input = 42; // Part 1 expect 30, Part 2 => 232,251,12
     System.Diagnostics.Debug.Assert(-5 == PowerLevel(122, 79, 57));
     System.Diagnostics.Debug.Assert(0 == PowerLevel(217, 196, 39));
     System.Diagnostics.Debug.Assert(4 == PowerLevel(101, 153, 71));
@@ -61,7 +61,50 @@ void Main()
         }
     }
 
-    Console.WriteLine($"Part 1: Max power of {largest.level} at {largest.topleft}");       
+    Console.WriteLine($"Part 1: Max power of {largest.level} at {largest.topleft}");
+
+    // Part 2
+    // This is slooow brute force. There's bound to be a form of short circuit that I haven't realised yet
+    // but this works in under 2 minutes so it'll do for now.
+    (int x, int y, int size, int level) part2 = (largest.topleft.x, largest.topleft.y, 3, largest.level);
+    foreach (var y in Enumerable.Range(1, 300))
+    {
+        foreach (var x in Enumerable.Range(1, 300))
+        {
+            var maxside = 300 - Math.Max(x, y) + 1;
+            // Ignore squares of size 1, 2, 3 as we already have the max of the 3s and the 1s and 2s will be smaller
+            if (maxside < 4)
+                continue;
+                
+            // Work out the size == 4
+            var level = levels[(x, y)] + levels[(x + 1, y)] + levels[(x + 2, y)] + levels[(x + 3, y)]
+                      + levels[(x, y + 1)] + levels[(x + 1, y + 1)] + levels[(x + 2, y + 1)] + levels[(x + 3, y + 1)]
+                      + levels[(x, y + 2)] + levels[(x + 1, y + 2)] + levels[(x + 2, y + 2)] + levels[(x + 3, y + 2)]
+                      + levels[(x, y + 3)] + levels[(x + 1, y + 3)] + levels[(x + 2, y + 3)] + levels[(x + 3, y + 3)];
+            if (level > part2.level)
+            {
+                part2 = (x, y, 4, level);
+            }
+            // Add the extra left and bottom edges for each increment rather than recalculating the whole square
+            for (var side = 5; side <= maxside; side++)
+            {
+                for (var dy = 0; dy < side; dy++)
+                {
+                    level += levels[(x + side - 1, y + dy)];
+                }
+                for (var dx = 0; dx < side - 1; dx++)
+                {
+                    level += levels[(x + dx, y + side - 1)];
+                }
+                if (level > part2.level)
+                {
+                    part2 = (x, y, side, level);
+                }
+            }
+        }
+    }
+    
+    Console.WriteLine($"Part 2: Max power of {part2.level} at ({part2.x},{part2.y}) with size of {part2.size}x{part2.size}");
 }
 
 public int PowerLevel(int x, int y, int serial)
