@@ -15,6 +15,8 @@ void Main()
     // Advent of Code 2018 https://adventofcode.com/2018
     // Day 13
 
+    // Perhaps a somewhat verbose and over engineered solution. But it works.
+    
     var inputname = Path.Combine(Path.GetDirectoryName(Util.CurrentQueryPath), $"day13-input.txt");
     var input = File.ReadAllLines(inputname).ToList();
 
@@ -105,25 +107,36 @@ void Main()
         }
     }
 
-    // Drive around it
-    var collision = false;
-    var carts = Carts.OrderBy(c => c.Y).ThenBy(c => c.X).Skip(9).Take(1);
-    while (!collision)
+    // Ride around it
+    var first = true;
+    while (Carts.Count(c => !c.Crashed) > 1)
     {
-        //var carts = Carts.OrderBy(c => c.Y).ThenBy(c => c.X);
+        var carts = Carts.Where(c => !c.Crashed).OrderBy(c => c.Y).ThenBy(c => c.X);
         foreach (var cart in carts)
         {
+            if (cart.Crashed)
+                continue;
+                
             cart.Move(Map);
             // Has it collided
-            if (Carts.Count(c => c.X == cart.X && c.Y == cart.Y) > 1)
+            var crashed = Carts.Where(c => c.X == cart.X && c.Y == cart.Y && !c.Crashed);
+            if (crashed.Count() > 1)
             {
                 // Collision
-                Console.WriteLine($"Collision at ({cart.X},{cart.Y})");
-                collision = true;
-                break;
+                if (first)
+                {
+                    Console.WriteLine($"Part 1: Collision at ({cart.X},{cart.Y})");
+                    first = false;
+                }
+                foreach (var c in crashed)
+                {
+                    c.Crashed = true;
+                }
             }
         }
     }
+    var lastcart = Carts.Single(c => !c.Crashed);
+    Console.WriteLine($"Part 2: Final cart is at ({lastcart.X},{lastcart.Y})");
 }
 
 public Dictionary<(int x, int y), Node> Map = new Dictionary<(int x, int y), Node>();
@@ -181,6 +194,7 @@ public class Cart
     public int Y { get; private set; }
     public Direction Facing { get; private set; } = Direction.North;
     public Turn LastTurn { get; private set; } = Turn.None;
+    public bool Crashed { get; set; } = false;
     
     public Cart(int initialX, int initialY, Direction facing)
     {
