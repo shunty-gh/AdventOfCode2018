@@ -17,7 +17,7 @@ void Main()
 
     var inputname = Path.Combine(Path.GetDirectoryName(Util.CurrentQueryPath), $"day15-input.txt");
 	//var input = File.ReadAllLines(inputname).ToList();
-	var input = TestInput();
+	var input = TestInput(2);
 
 	// Build the world
 	for (var y = 0; y < input.Count; y++)
@@ -43,9 +43,10 @@ void Main()
 		//State();
 		
 		var fighters = Fighters
+			.Where(f => f.HitPoints > 0) // Shouldn't be necessary
 			.OrderBy(f => f.Y)
 			.ThenBy(f => f.X)
-			.ToList();
+			.ToList();		
 		
 		foreach (var fighter in fighters)
 		{
@@ -55,25 +56,35 @@ void Main()
 				
 			// Identify targets
 			var targets = Fighters
-				.Where(f => fighter.IsElf ? f.IsGoblin : f.IsElf)
+				.Where(f => f.HitPoints > 0 && fighter.IsElf ? f.IsGoblin : f.IsElf)
 				.OrderBy(f => f.Y)
 				.ThenBy(f => f.X)
 				.ToList();
 				
+			if (targets.Count == 0)
+				break;
+				
+			// Is a target in range already
+			if (targets.Any(t => fighter.IsAdjacentTo(t)))
+			{
+				fightWith = targets
+					.Where(t => fighter.IsAdjacentTo(t))
+					.OrderBy(t => t.Y).ThenBy(t => t.X)
+					.First();
+			}
+
 			// Find open locations
 			var openlocs = new List<(int X, int Y, Fighter Target)>();
-			foreach (var target in targets)
+			if (fightWith == null)
 			{
-				if (fighter.IsAdjacentTo(target))
+				foreach (var target in targets)
 				{
-					fightWith = target;
-					break;
-				}
-				foreach ((int dx, int dy) in new (int, int)[] { (0, -1), (-1, 0), (0, 1), (1, 0) })
-				{
-					if (IsOpen(target.X + dx, target.Y + dy))
+					foreach ((int dx, int dy) in new(int, int)[] { (0, -1), (-1, 0), (0, 1), (1, 0) })
 					{
-						openlocs.Add((target.X + dx, target.Y + dy, target));
+						if (IsOpen(target.X + dx, target.Y + dy))
+						{
+							openlocs.Add((target.X + dx, target.Y + dy, target));
+						}
 					}
 				}
 			}
@@ -93,7 +104,7 @@ void Main()
 					{
 						foreach (var loc in locs)
 						{
-							pathlist.Add((loc.Target, item.Path));
+							pathlist.Add((loc.Target, item.Path.ToList()));
 						}
 					}
 					else
@@ -114,22 +125,23 @@ void Main()
 				if (pathlist.Count > 0)
 				{
 					var minpathlen = pathlist.Min(p => p.Path.Count);
-					var closesttarget = pathlist
+					var closestopen = pathlist
 						.Where(p => p.Path.Count == minpathlen)
-						.GroupBy(p => p.Target)
-						.OrderBy(g => g.Key.Y)
-						.ThenBy(g => g.Key.X)
-						.First();
-					var bestpath = closesttarget
-						.OrderBy(t => t.Path.First().Y)
-						.ThenBy(t => t.Path.First().X)
+						.OrderBy(p => p.Path.Last().Y)
+						.ThenBy(p => p.Path.Last().X)
+						.ThenBy(p => p.Path.First().Y)
+						.ThenBy(p => p.Path.First().X)
 						.First();
 					// Move to it
-					fighter.X = bestpath.Path.First().X;
-					fighter.Y = bestpath.Path.First().Y;
-					if (fighter.IsAdjacentTo(bestpath.Target))
+					fighter.X = closestopen.Path.First().X;
+					fighter.Y = closestopen.Path.First().Y;
+
+					foreach ((int dx, int dy) in new(int, int)[] { (0, -1), (-1, 0), (1, 0), (0, 1) })
 					{
-						fightWith = bestpath.Target;
+						(int X, int Y) = (fighter.X + dx, fighter.Y + dy);
+						fightWith = Fighters.FirstOrDefault(f => f.X == X && f.Y == Y);
+						if (fightWith != null)
+							break;
 					}
 				}
 			}
@@ -155,7 +167,7 @@ void Main()
 	}
 
 	var hitsum = Fighters.Sum(f => f.HitPoints);
-	Fighters.Dump();
+	Fighters.OrderBy(f => f.Y).ThenBy(f => f.X).Dump();
 	var part1 = round * hitsum;
 	Console.WriteLine($"Part 1: {Fighters.Count} fighters left; {round} x {hitsum} = {part1}");
 	
@@ -221,28 +233,48 @@ public class Fighter
 	public bool IsGoblin => FighterType == FighterType.Goblin;
 }
 
-public List<string> TestInput()
+public List<string> TestInput(int testNo = 0)
 {
-	return new List<string>
+	var tests = new List<List<string>>
 	{
-		// Part 1 = 37 * 982 = 36334
-		"#######",
-		"#G..#E#",
-		"#E#E.E#",
-		"#G.##.#",
-		"#...#E#",
-		"#...E.#",
-		"#######",		
+		new List<string>
+		{
+			// Part 1 = 37 * 982 = 36334
+			"#######",
+			"#G..#E#",
+			"#E#E.E#",
+			"#G.##.#",
+			"#...#E#",
+			"#...E.#",
+			"#######",
+		},
 
-		// Part 1 = 47 * 590 = 27730
-//		"#######",
-//		"#.G...#",
-//		"#...EG#",
-//		"#.#.#G#",
-//		"#..G#E#",
-//		"#.....#",
-//		"#######",		
+		new List<string>
+		{
+			// Part 1 = 47 * 590 = 27730
+			"#######",
+			"#.G...#",
+			"#...EG#",
+			"#.#.#G#",
+			"#..G#E#",
+			"#.....#",
+			"#######",
+		},
+
+		new List<string>
+		{
+			// Part 1 = 46 * 859 = 39514
+			"#######",
+			"#E..EG#",
+			"#.#G.E#",
+			"#E.##E#",
+			"#G..#.#",
+			"#..E#.#",
+			"#######",
+		},
 	};
+
+	return tests[testNo];
 }
 
 public void State()
