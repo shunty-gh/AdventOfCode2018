@@ -34,30 +34,28 @@ void Main()
 		}
 	}
 
-	var gcount = Fighters.Count(f => f.Value.IsGoblin);
-	var ecount = Fighters.Count(f => f.Value.IsElf);
+	var gcount = Fighters.Count(f => f.IsGoblin);
+	var ecount = Fighters.Count(f => f.IsElf);
 	var round = 0;
 	
 	while (gcount > 0 && ecount > 0)
 	{
-		State();
+		//State();
 		
 		var fighters = Fighters
-			.OrderBy(f => f.Key.Y)
-			.ThenBy(f => f.Key.X)
-			.Select(f => f.Value)
+			.OrderBy(f => f.Y)
+			.ThenBy(f => f.X)
 			.ToList();
 		
-		Fighter fightWith = null;
 		foreach (var fighter in fighters)
 		{
+			Fighter fightWith = null;
 			if (fighter.HitPoints <= 0)
 				continue;
 				
 			// Identify targets
 			var targets = Fighters
-				.Where(f => fighter.IsElf ? f.Value.IsGoblin : f.Value.IsElf)
-				.Select(f => f.Value)
+				.Where(f => fighter.IsElf ? f.IsGoblin : f.IsElf)
 				.OrderBy(f => f.Y)
 				.ThenBy(f => f.X)
 				.ToList();
@@ -105,8 +103,9 @@ void Main()
 							(int X, int Y) key = (item.X + dx, item.Y + dy);
 							if (IsOpen(key.X, key.Y) && !item.Path.Any(p => (p.X == key.X) && (p.Y == key.Y)))
 							{
-								item.Path.Add(key);
-								q.Enqueue((key.X, key.Y, item.Path));
+								var newpath = item.Path.ToList();
+								newpath.Add(key);
+								q.Enqueue((key.X, key.Y, newpath));
 							}
 						}
 					}
@@ -121,7 +120,10 @@ void Main()
 						.OrderBy(g => g.Key.Y)
 						.ThenBy(g => g.Key.X)
 						.First();
-					var bestpath = closesttarget.OrderBy(t => t.Path.First().Y).ThenBy(t => t.Path.First().X).First();
+					var bestpath = closesttarget
+						.OrderBy(t => t.Path.First().Y)
+						.ThenBy(t => t.Path.First().X)
+						.First();
 					// Move to it
 					fighter.X = bestpath.Path.First().X;
 					fighter.Y = bestpath.Path.First().Y;
@@ -138,7 +140,7 @@ void Main()
 				fighter.Attack(fightWith);
 				if (fightWith.HitPoints <= 0)
 				{
-					Fighters.Remove((fightWith.X, fightWith.Y));
+					Fighters.Remove(fightWith);
 					if (fightWith.IsElf)
 						ecount--;
 					else
@@ -148,21 +150,21 @@ void Main()
 						break;
 				}
 			}
-			round++;
 		}
+		round++;
 	}
 
-	var hitsum = Fighters.Sum(f => f.Value.HitPoints);
-	//Fighters.Dump();
+	var hitsum = Fighters.Sum(f => f.HitPoints);
+	Fighters.Dump();
 	var part1 = round * hitsum;
 	Console.WriteLine($"Part 1: {Fighters.Count} fighters left; {round} x {hitsum} = {part1}");
 	
 }
 
-public static HashSet<(int X, int Y)> World = new HashSet<(int X, int Y)>();
-public static Dictionary<(int X, int Y), Fighter> Fighters = new Dictionary<(int X, int Y), Fighter>();
+public HashSet<(int X, int Y)> World = new HashSet<(int X, int Y)>();
+public List<Fighter> Fighters = new List<Fighter>();
 
-public bool IsOpen(int x, int y) => World.Contains((x,y)) && !Fighters.ContainsKey((x,y));
+public bool IsOpen(int x, int y) => World.Contains((x,y)) && !Fighters.Any(f => f.X == x && f.Y == y);
 
 public Fighter NewFighter(int x, int y, char fighterType)
 {
@@ -171,7 +173,7 @@ public Fighter NewFighter(int x, int y, char fighterType)
 		return null;
 		
 	var result = new Fighter(x, y, ftype);
-	Fighters.Add((x,y), result);
+	Fighters.Add(result);
 	return result;
 }
 
@@ -223,21 +225,23 @@ public List<string> TestInput()
 {
 	return new List<string>
 	{
-	//		"#######",
-	//		"#G..#E#",
-	//		"#E#E.E#",
-	//		"#G.##.#",
-	//		"#...#E#",
-	//		"#...E.#",
-	//		"#######",		
-
+		// Part 1 = 37 * 982 = 36334
 		"#######",
-		"#.G...#",
-		"#...EG#",
-		"#.#.#G#",
-		"#..G#E#",
-		"#.....#",
+		"#G..#E#",
+		"#E#E.E#",
+		"#G.##.#",
+		"#...#E#",
+		"#...E.#",
 		"#######",		
+
+		// Part 1 = 47 * 590 = 27730
+//		"#######",
+//		"#.G...#",
+//		"#...EG#",
+//		"#.#.#G#",
+//		"#..G#E#",
+//		"#.....#",
+//		"#######",		
 	};
 }
 
@@ -249,9 +253,9 @@ public void State()
 		{	
 			if (World.Contains((x,y)))
 			{
-				if (Fighters.ContainsKey((x,y)))
+				if (Fighters.Any(f => f.X == x && f.Y == y))
 				{
-					Console.Write(Fighters[(x,y)].IsElf ? 'E' : 'G');
+					Console.Write(Fighters.First(f => f.X == x && f.Y == y).IsElf ? 'E' : 'G');
 				}
 				else
 				{
