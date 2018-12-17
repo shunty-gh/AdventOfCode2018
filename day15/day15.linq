@@ -87,23 +87,16 @@ void Main()
                 .FirstOrDefault();
 
             // Find open locations            
-            var openlocs = new List<(int X, int Y, Fighter Target)>();
+            var openlocs = new List<(int X, int Y)>();
             if (fightWith == null)
             {
                 foreach (var target in targets)
                 {
-                    // Is this target in range already
-                    if (target.IsAdjacentTo(fighter))
-                    {
-                        fightWith = target;
-                        break;
-                    }
-
                     foreach ((int dx, int dy) in new(int, int)[] { (0, -1), (-1, 0), (0, 1), (1, 0) })
                     {
                         if (IsOpen(target.X + dx, target.Y + dy))
                         {
-                            openlocs.Add((target.X + dx, target.Y + dy, target));
+                            openlocs.Add((target.X + dx, target.Y + dy));
                         }
                     }
                 }
@@ -113,42 +106,52 @@ void Main()
 			if (fightWith == null && openlocs.Count > 0)
 			{
                 // Find the shortest paths to the open locations
-				var q = new ConcurrentQueue<(int X, int Y, List<(int X, int Y)> Path)>();			
-				q.Enqueue((fighter.X, fighter.Y, new List<(int X, int Y)>()));
-				var pathlist = new List<(Fighter Target, List<(int X, int Y)> Path)>();
+				var q = new Queue<((int X, int Y) Key, List<(int X, int Y)> Path)>();			
+				q.Enqueue(((fighter.X, fighter.Y), new List<(int X, int Y)>()));
+				var pathlist = new List<List<(int X, int Y)>>();
+                var bestpathtopoint = new Dictionary<(int X, int Y), (int Count, List<(int X, int Y)> Path)>();
 				
                 var minpath = -1;
 				while (q.Count > 0)
 				{
-					//var item = q.Dequeue();
-                    q.TryDequeue(out var item);
-                    // If the path is already longer than our minpath then skip it and move on
-                    if (minpath > 0 && item.Path.Count > minpath)
+					var item = q.Dequeue();
+                    var pcount = item.Path.Count;
+                    if (minpath > 0 && pcount >= minpath)
                         continue;
                         
-					var locs = openlocs.Where(loc => item.X == loc.X && item.Y == loc.Y);
-					if (locs.Any())
+                    foreach ((int dx, int dy) in new(int, int)[] { (0, -1), (-1, 0), (0, 1), (1, 0) })
 					{
-						foreach (var loc in locs)
+						(int X, int Y) key = (item.Key.X + dx, item.Key.Y + dy);
+                        
+                        if (openlocs.Contains(key))
                         {
-                            if (minpath < 0 || item.Path.Count <= minpath)
-                            {
-                                minpath = item.Path.Count;
-                                pathlist.Add((loc.Target, item.Path.ToList()));
-                            }
-						}
-					}
-					else
-					{
-						foreach ((int dx, int dy) in new(int, int)[] { (0, -1), (-1, 0), (0, 1), (1, 0) })
+                            minpath = pcount + 1;
+                            var np = item.Path.ToList();
+                            np.Add(key);
+                            pathlist.Add(np);
+                        }                        
+						else if (IsOpen(key) && !item.Path.Contains(key))
 						{
-							(int X, int Y) key = (item.X + dx, item.Y + dy);
-							if (IsOpen(key.X, key.Y) && !item.Path.Any(p => (p.X == key.X) && (p.Y == key.Y)))
-							{
-                                var newpath = item.Path.ToList();
-								newpath.Add(key);
-								q.Enqueue((key.X, key.Y, newpath));
-							}
+                            if (bestpathtopoint.ContainsKey(key))
+                            {
+                                if (bestpathtopoint[key].Count < (pcount + 1))
+                                {
+                                    continue;
+                                }
+                                else 
+                                {
+                                    // Compare first step
+                                    var b1 = bestpathtopoint[key].Path.First();
+                                    var p1 = item.Path.First();
+                                    if ((p1.Y > b1.Y) || ((p1.Y == b1.Y) && (p1.X >= b1.X)))
+                                        continue;
+                                }
+                            }
+                            
+                            var np = item.Path.ToList();
+                            np.Add(key);
+                            bestpathtopoint[key] = (pcount + 1, np);
+                            q.Enqueue((key, np));
 						}
 					}
 				}
@@ -156,17 +159,17 @@ void Main()
 				// Move one step closer to the closest open location
                 if (pathlist.Count > 0)
 				{
-					var minpathlen = pathlist.Min(p => p.Path.Count);
+					var minpathlen = pathlist.Min(p => p.Count);
 					var closestopen = pathlist
-						.Where(p => p.Path.Count == minpathlen)
-						.OrderBy(p => p.Path.Last().Y)
-						.ThenBy(p => p.Path.Last().X)
-						.ThenBy(p => p.Path.First().Y)
-						.ThenBy(p => p.Path.First().X)
+						.Where(p => p.Count == minpathlen)
+						.OrderBy(p => p.Last().Y)
+						.ThenBy(p => p.Last().X)
+						.ThenBy(p => p.First().Y)
+						.ThenBy(p => p.First().X)
 						.First();
 					// Move to it
-					fighter.X = closestopen.Path.First().X;
-					fighter.Y = closestopen.Path.First().Y;
+					fighter.X = closestopen.First().X;
+					fighter.Y = closestopen.First().Y;
 
                     fightWith = targets
                         .Where(t => t.IsAdjacentTo(fighter))
@@ -209,7 +212,8 @@ void Main()
 public HashSet<(int X, int Y)> World = new HashSet<(int X, int Y)>();
 public List<Fighter> Fighters = new List<Fighter>();
 
-public bool IsOpen(int x, int y) => World.Contains((x,y)) && !Fighters.Any(f => f.X == x && f.Y == y);
+public bool IsOpen(int x, int y) => World.Contains((x, y)) && !Fighters.Any(f => f.X == x && f.Y == y);
+public bool IsOpen((int x, int y) key) => IsOpen(key.x, key.y);
 
 public Fighter NewFighter(int x, int y, char fighterType)
 {
