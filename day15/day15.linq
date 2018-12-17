@@ -29,21 +29,59 @@ void Main()
     */
     //var input = TestInput(5);
 
-	// Build the world
-	for (var y = 0; y < input.Count; y++)
-	{
-		var row = input[y];
-		for (var x = 0; x < input[0].Length; x++)
-		{
-			if (row[x] != '#')
-			{
-				World.Add((x, y));				
-				if (row[x] == 'G' || row[x] == 'E')
-					NewFighter(x, y, row[x]);
-			}
-		}
-	}
 
+    var part1 = BuildAndFight(input);
+    Fighters.OrderBy(f => f.Y).ThenBy(f => f.X).Dump("Part 1");
+    Console.WriteLine($"Part 1: {Fighters.Count} fighters left; {part1.Round} x {part1.HitSum} = {part1.Score}");
+    //State();
+    
+    (int Score, int Round, int HitSum) part2 = (0,0,0);
+    var elfpower = 3;
+    while (part2.Score <= 0)
+    {
+        elfpower++;
+        part2 = BuildAndFight(input, elfpower, true);
+    }
+    Fighters.OrderBy(f => f.Y).ThenBy(f => f.X).Dump("Part 2");
+    Console.WriteLine($"Part 2: {Fighters.Count} fighters left with AttackPower {elfpower}; {part2.Round} x {part2.HitSum} = {part2.Score}");
+}
+
+public HashSet<(int X, int Y)> World = new HashSet<(int X, int Y)>();
+public List<Fighter> Fighters = new List<Fighter>();
+
+public bool IsOpen(int x, int y) => World.Contains((x, y)) && !Fighters.Any(f => f.X == x && f.Y == y);
+public bool IsOpen((int x, int y) key) => IsOpen(key.x, key.y);
+
+public (int Score, int Round, int HitSum) BuildAndFight(List<string> input, int ElfPower = 3, bool stopOnElfDeath = false)
+{
+    World.Clear();
+    Fighters.Clear();
+    BuildTheWorld(input);
+    return Fight(ElfPower, stopOnElfDeath);
+}
+
+public void BuildTheWorld(List<string> input)
+{
+    for (var y = 0; y < input.Count; y++)
+    {
+        var row = input[y];
+        for (var x = 0; x < input[0].Length; x++)
+        {
+            if (row[x] != '#')
+            {
+                World.Add((x, y));
+                if (row[x] == 'G' || row[x] == 'E')
+                    NewFighter(x, y, row[x]);
+            }
+        }
+    }
+}
+
+public (int Score, int Round, int HitSum) Fight(int ElfPower, bool stopOnElfDeath)
+{
+    // Update Elf attack power
+    Fighters.Where(f => f.IsElf).ToList().ForEach(f => f.AttackPower = ElfPower);
+    
 	var gcount = Fighters.Count(f => f.IsGoblin);
 	var ecount = Fighters.Count(f => f.IsElf);
 	var round = 0;
@@ -186,9 +224,15 @@ void Main()
 				fighter.Attack(fightWith);
 				if (fightWith.HitPoints <= 0)
 				{
-					Fighters.Remove(fightWith);
-					if (fightWith.IsElf)
-						ecount--;
+                    Fighters.Remove(fightWith);
+                    if (fightWith.IsElf)
+                    {
+                        if (stopOnElfDeath)
+                        {
+                            return (0,0,0);
+                        }
+                        ecount--;
+                    }
 					else
 						gcount--;
 					
@@ -202,18 +246,9 @@ void Main()
     }
 
 	var hitsum = Fighters.Sum(f => f.HitPoints);
-	Fighters.OrderBy(f => f.Y).ThenBy(f => f.X).Dump();
-	var part1 = round * hitsum;
-	Console.WriteLine($"Part 1: {Fighters.Count} fighters left; {round} x {hitsum} = {part1}");
-    State();
-	
+	var score = round * hitsum;
+    return (score, round, hitsum);	
 }
-
-public HashSet<(int X, int Y)> World = new HashSet<(int X, int Y)>();
-public List<Fighter> Fighters = new List<Fighter>();
-
-public bool IsOpen(int x, int y) => World.Contains((x, y)) && !Fighters.Any(f => f.X == x && f.Y == y);
-public bool IsOpen((int x, int y) key) => IsOpen(key.x, key.y);
 
 public Fighter NewFighter(int x, int y, char fighterType)
 {
@@ -238,7 +273,7 @@ public class Fighter
 	public int X { get; set; }
 	public int Y { get; set; }
 	public FighterType FighterType { get; }
-	public int AttackPower { get; } = 3;
+	public int AttackPower { get; set; } = 3;
 	public int HitPoints { get; private set; } = 200;
 
 	public Fighter(int x, int y, FighterType fighterType)
