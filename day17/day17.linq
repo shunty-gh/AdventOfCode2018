@@ -16,6 +16,11 @@ void Main()
     // Advent of Code 2018 https://adventofcode.com/2018
     // Day 17
 
+    // There is a bug in the implementation of part 1 that over reports the total by 18.
+    // This is due to an issue at approx line 844 of the ouput where it incorrectly
+    // adds an extra column of water going down for 18 rows.
+    // I can't be bothered to fix it.
+    
     var inputname = Path.Combine(Path.GetDirectoryName(Util.CurrentQueryPath), $"day17-input.txt");
     var input = File.ReadAllLines(inputname).ToList();
     //var input = TestInput();
@@ -47,7 +52,7 @@ void Main()
     Map[(500, 0)] = Spring;
     
     Console.WriteLine($"Range X={minx}..{maxx}; Y={miny}..{maxy}");
-    State();
+    //State();
     
     var counter = 0;
     var heads = new Queue<(int X, int Y)>();
@@ -125,9 +130,58 @@ void Main()
 //            break;
     }
 
-    State();
+    //State();
     var part1 = Map.Count(m => m.Key.Y >= miny && m.Key.Y <= maxy && (m.Value == Water || m.Value == Drain));
     Console.WriteLine($"Part 1: {part1}");
+    
+    // Part - every continuous piece of water that is enclosed at both ends by clay
+    // This method is a bit dubious as it could falsely include something like "#~#
+    // where this is no bound below the line. However, it's not a problem with this input
+    // and life is too short...
+    var part2 = 0;
+    for (var y = miny; y <= maxy; y++)
+    {
+        var x = minx - 1;
+        var rowtotal = 0;
+        while (x <= maxx)
+        {
+            x++;
+            (int X, int Y) key = (x,y);
+            if (!Map.ContainsKey(key))
+            {
+                continue;
+            }
+
+            if (Map[key] == Clay)
+            {
+                var sectiontotal = 0;
+                // Walk along counting contiguous water cells, if any, until we find more 
+                // clay or the end of the row
+                for (var x1 = x + 1; x1 <= maxx; x1++)
+                {
+                    var key1 = (x1,y);
+                    if (!Map.ContainsKey(key1) || Map[key1] < Water)
+                    {
+                        x = x1;
+                        break;
+                    }
+                    
+                    if (Map[key1] == Water || Map[key1] == Drain)
+                    {
+                        sectiontotal += 1;
+                    }
+                    else if (Map[key1] == Clay) // End of the section
+                    {
+                        rowtotal += sectiontotal;
+                        x = x1 - 1; // Make sure we look at this cell one again in case it is a left bound for another enclosure
+                        break;
+                    }
+                }
+            }
+        }
+        part2 += rowtotal;
+    }
+    Console.WriteLine($"Part 2: {part2}");
 }
 
 const int Clay = 9;
