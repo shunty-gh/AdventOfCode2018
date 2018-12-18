@@ -15,23 +15,103 @@ void Main()
 
     // Draw the initial state
     DrawWorld(cells, 0);
-    Thread.Sleep(500);
+    Thread.Sleep(250);
     //return;
 
-    // Live
+    // Part 1
     var iteration = 0;
     while (iterations == 0 || iteration < iterations)
     {
         iteration++;
         Evolve(cells);
         DrawWorld(cells, iteration);
-        Thread.Sleep(500);
+        Thread.Sleep(250);
     }
 
     var trees = cells.Count(c => c.Value.State == LandscapeState.Trees);
     var lumberyards = cells.Count(c => c.Value.State == LandscapeState.LumberYard);
     var part1 = trees * lumberyards;
     Console.WriteLine($"Part 1: {trees} trees x {lumberyards} lumberyards = {part1}");
+
+    // Part 2
+    // Repeat until the state stabilises then find the repeat frequency. Get
+    // resource values for each item in the repeating sequence. Find the index that
+    // matches (target value % frequency).
+    iterations = 0;
+    cells.Clear();
+    cells = CreateInitialState(input);
+    List<(int, int, LandscapeState)> snapshotbase = null;
+    var snapshotat = 500; // Arbitrary number at which point we assume it's settled into a rythmn
+    var periodfound = false;
+    var period = 0;
+    iteration = 0;
+    var resourcevalues = new List<(int Iteration, int Value)>();
+    while (iterations == 0 || iteration < iterations)
+    {
+        iteration++;
+        Evolve(cells);
+        
+        // Take a snapshot at an arbitrary point
+        if (iteration == snapshotat)
+        {
+            snapshotbase = Snapshot(cells);
+        }
+        // Loop until we find an iteration that matches our original snapshot
+        if (iteration > snapshotat && !periodfound)
+        {
+            var snapshot = Snapshot(cells);
+            if (SnapshotsEqual(snapshotbase, snapshot))
+            {
+                periodfound = true;
+                period = iteration - snapshotat;
+                Console.WriteLine($"Period found: {period}");
+            }            
+        }
+
+        // Once found, generate resource values for each possibility
+        if (periodfound)
+        {
+            // Adding on one more than needed ( <= as opposed to < ) just so 
+            // we can check that the last value in the list matches the first
+            for (var pindex = 0; pindex <= period; pindex++) 
+            {
+                resourcevalues.Add((iteration, GetResourceValue(cells)));
+                iteration++;
+                Evolve(cells);
+            }
+            // No need to carry on once we have all possible outcomes
+            break;
+        }
+    }
+
+    //resourcevalues.Dump();
+
+    var target = 1_000_000_000;
+    var rvindex = ((target - resourcevalues.First().Iteration) % period);
+    var part2 = resourcevalues[rvindex].Value;
+    Console.WriteLine($"Part 2: {part2}");
+}
+
+public int GetResourceValue(Dictionary<(int, int), Cell> cells)
+{
+    var trees = cells.Count(c => c.Value.State == LandscapeState.Trees);
+    var lumberyards = cells.Count(c => c.Value.State == LandscapeState.LumberYard);
+    return trees * lumberyards;
+}
+
+public bool SnapshotsEqual(List<(int, int, LandscapeState)> s1, List<(int, int, LandscapeState)> s2)
+{
+    if (s1.Count != s2.Count)
+        return false;
+    
+    for (var index = 0; index < s1.Count; index++)
+    {
+        var i1 = s1[index];
+        var i2 = s2[index];
+        if (i1.Item1 != i2.Item1 || i1.Item2 != i2.Item2 || i1.Item3 != i2.Item3)
+            return false;        
+    }
+    return true;
 }
 
 public enum LandscapeState
@@ -142,6 +222,15 @@ public void Evolve(Dictionary<(int x, int y), Cell> cells)
     // Update all cells so that we apply all their NextState values all at once
     foreach (var cell in cells)
         cell.Value.State = cell.Value.NextState;
+}
+
+public List<(int, int, LandscapeState)> Snapshot(Dictionary<(int x, int y), Cell> cells)
+{
+    return cells
+        .OrderBy(c => c.Key.y)
+        .ThenBy(c => c.Key.x)
+        .Select(c => (c.Key.x, c.Key.y, c.Value.State))
+        .ToList();
 }
 
 public char StateToChar(LandscapeState state) => state == LandscapeState.LumberYard ? '#' : state == LandscapeState.Trees ? '|' : '.';
