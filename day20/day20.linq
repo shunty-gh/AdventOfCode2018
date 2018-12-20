@@ -32,13 +32,7 @@ public (int X, int Y) South((int X, int Y) current) => (current.X, current.Y + 1
 public (int X, int Y) West((int X, int Y) current) => (current.X - 1, current.Y);
 public (int X, int Y) East((int X, int Y) current) => (current.X + 1, current.Y);
 
-public bool DoorNorth((int X, int Y) point) => Map.ContainsKey(North(point)) && IsDoor(Map[North(point)].Content);
-public bool DoorSouth((int X, int Y) point) => Map.ContainsKey(South(point)) && IsDoor(Map[South(point)].Content);
-public bool DoorWest((int X, int Y) point) => Map.ContainsKey(West(point)) && IsDoor(Map[West(point)].Content);
-public bool DoorEast((int X, int Y) point) => Map.ContainsKey(East(point)) && IsDoor(Map[East(point)].Content);
-
 public Node AddRoom((int x, int y) point) => AddOrUpdate(point.x, point.y, NodeContent.Room);
-public Node AddWall((int x, int y) point) => AddOrUpdate(point.x, point.y, NodeContent.Wall);
 public Node AddDoorNS((int x, int y) point) => AddOrUpdate(point.x, point.y, NodeContent.DoorNS);
 public Node AddDoorWE((int x, int y) point) => AddOrUpdate(point.x, point.y, NodeContent.DoorWE);
 public bool IsDoor(NodeContent content) => content == NodeContent.DoorNS || content == NodeContent.DoorWE;
@@ -135,6 +129,7 @@ public void BuildMap(string input)
                 current = next;
                 break;
             case '(':
+                // Add a new split point
                 splits.Add(((current.X, current.Y), index));
                 break;
             case ')':
