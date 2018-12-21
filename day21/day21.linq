@@ -5,6 +5,8 @@ void Main()
     // Advent of Code 2018 https://adventofcode.com/2018
     // Day 21
 
+    // This is the SLOW version before rewriting the original instructions
+    
     var inputname = Path.Combine(Path.GetDirectoryName(Util.CurrentQueryPath), $"day21-input.txt");
     var input = File.ReadAllLines(inputname).ToList();
     //var input = TestData();
@@ -14,8 +16,11 @@ void Main()
     var ip = 0;
     var instructions = input.Skip(1).Select(s => ParseInstruction(s)).ToList();
     var icount = instructions.Count;
-    var counter = 0;
+    Int64 counter = 0;
     int part1 = 0;
+    var firstrun = true;
+    
+    var seen = new Dictionary<int, Int64>();
     
     while (ip < icount)
     {
@@ -27,17 +32,31 @@ void Main()
         //Console.WriteLine($"  {instruction.Op} {instruction.A} {instruction.B} {instruction.C}  [{registers[0]}, {registers[1]}, {registers[2]}, {registers[3]}, {registers[4]}, {registers[5]}]");
         ip = registers[ipregister] + 1;
         
+        // Part 1
         // A review of the code shows that at instruction 28 we check r[0] against r[5]. If they're equal we stop.
         // This is the only time r[0] is involved.
-        // Therefore we need to initialise r[0] to this value and the program will stop at the first opportunity.
-        if (ip == 28)         
+        // Therefore we would need to initialise r[0] to this value and the program would stop at the first opportunity.
+        if (ip == 28)
         {
-            part1 = registers[5];
-            break;
-        }
-    }
-    Console.WriteLine($"Part 1: Program will exit after {counter} instructions if register 0 is set to {part1}");
+            if (firstrun)
+            {
+                part1 = registers[5];
+                firstrun = false;
+            }
 
+            if (seen.ContainsKey(registers[5]))
+            {
+                // Started to repeat therefore time to quit
+                break;
+            }
+            seen.Add(registers[5], counter);
+        }
+        
+    }
+    Console.WriteLine($"Part 1: Program will exit asap if register 0 is set to {part1}");
+
+    // The part 2 result is the last r[5] we saw before it started to loop
+    Console.WriteLine($"Part 2: {seen.OrderBy(k => k.Value).Last().Key}");
 }
 
 public int[] ApplyInstruction(int[] registers, (string Op, int A, int B, int C) instruction)
