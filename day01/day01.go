@@ -25,8 +25,6 @@ func main() {
 
 	seen := make(map[int64]int)
 	current := int64(0)
-	part1 := int64(0)
-	part2 := int64(0)
 	found := false
 	iter := 0
 
@@ -36,9 +34,9 @@ func main() {
 			current += input[i]
 
 			// Check if we've seen this frequency before
-			if _, ok := seen[current]; ok {
+			if _, ok := seen[current]; ok && !found {
 				// Found it
-				part2 = current
+				fmt.Println("Part 2", current)
 				found = true
 				if iter > 1 {
 					break
@@ -48,10 +46,8 @@ func main() {
 			}
 		}
 		if iter == 1 {
-			part1 = current
+			fmt.Println("Part 1", current)
 		}
 	}
 
-	fmt.Println("Part 1", part1)
-	fmt.Println("Part 2", part2)
 }
