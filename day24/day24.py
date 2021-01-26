@@ -1,7 +1,8 @@
-import copy
 import re
 
 def select_group_targets(armyA, armyB):
+    """Determine which opponent group each group within armyA should attack"""
+
     result = []
     for groupA in armyA:
         if groupA["units"] <= 0:
@@ -26,6 +27,8 @@ def select_group_targets(armyA, armyB):
 
 
 def select_targets(immune, infection):
+    """Select appropriate attack targets for each army"""
+
     immune.sort(key=lambda x: x["initiative"], reverse=True)
     immune.sort(key=lambda x: x["power"], reverse=True)
     infection.sort(key=lambda x: x["initiative"], reverse=True)
@@ -40,11 +43,15 @@ def select_targets(immune, infection):
 
 
 def clear_target(army):
+    """Reset the 'target' property for each group in this army"""
+
     for group in army:
         group["target"] = False
 
 
 def attack(attacker, defender):
+    """Perform the actual attack"""
+
     aunits = attacker["units"]
     if aunits <= 0:
         return
@@ -63,12 +70,16 @@ def attack(attacker, defender):
 
 
 def is_defeated(army):
+    """Determine if this army has any units left"""
+
     for group in army:
         if group["units"] > 0:
             return False
     return True
 
 def unit_total(army):
+    """Get the current total of all units in this army"""
+
     result = 0
     for group in army:
         result += group["units"]
@@ -76,6 +87,8 @@ def unit_total(army):
 
 
 def do_battle(armyA, armyB):
+    """Fight for as many rounds as is necessary to find a winner or reach a stalemate"""
+
     while True:
         # Target selection
         clear_target(armyA)
@@ -83,7 +96,7 @@ def do_battle(armyA, armyB):
         targetlist = select_targets(armyA, armyB)
 
         if (len(targetlist) == 0):
-            return (False, -1) # Nobody can attack - each one is immune to the others powers
+            return (False, -1) # Nobody can attack - each one is immune to the other's damage
 
         # Attack
         targetlist.sort(key=lambda x: x[0]["initiative"], reverse=True)
@@ -98,74 +111,90 @@ def do_battle(armyA, armyB):
             return (True, unit_total(armyA))
 
 
-rr = re.compile(r"(\d+) units each with (\d+) hit points (\((.*)\))?\s?with an attack that does (\d+) (\w+) damage at initiative (\d+)")
+def build_armies():
+    """Read input file and create immune and infection group arrays"""
 
-f = open("./day24-input.txt", "r")
-#f = open("./day24-input-test.txt", "r") # Expect P1 == 5216; P2 == 51
-input = f.readlines()
+    rr = re.compile(r"(\d+) units each with (\d+) hit points (\((.*)\))?\s?with an attack that does (\d+) (\w+) damage at initiative (\d+)")
 
-immunearmy, infectionarmy = [], []
-immune, infection = False, False
-immid, infid = 1, 1
-for line in [l.strip() for l in input]:
-    if line.startswith("Immune System"):
-        immune = True
-        continue
-    elif line.startswith("Infection"):
-        immune = False
-        infection = True
-        continue
-    elif line.isspace() or line == "":
-        continue
+    f = open("./day24-input.txt", "r")
+    #f = open("./day24-input-test.txt", "r") # Expect P1 == 5216; P2 == 51
+    input = f.readlines()
 
-    match = rr.split(line)
-    immuneto = []
-    weakto = []
-    if match[4] != None:
-        parts = [p.strip() for p in match[4].strip().split(';')]
-        for part in parts:
-            if part.startswith("weak to"):
-                ww = [p.strip() for p in part[8:].strip().split(',')]
-                weakto.extend(ww)
-            else:
-                ii = [p.strip() for p in part[10:].strip().split(',')]
-                immuneto.extend(ii)
-    group = {
-        "groupType": "immune" if immune else "infection",
-        "groupId": immid if immune else infid,
-        "units": int(match[1]),
-        "hp": int(match[2]),
-        "damage": int(match[5]),
-        "damageType": match[6],
-        "initiative": int(match[7]),
-        "conditions": match[4],
-        "weakTo": weakto,
-        "immuneTo": immuneto,
-        "power": int(match[1]) * int(match[5]),
-        "target": False,
-    }
-    if immune:
-        immunearmy.append(group)
-        immid += 1
-    elif infection:
-        infectionarmy.append(group)
-        infid += 1
+    immunearmy, infectionarmy = [], []
+    immune, infection = False, False
+    immid, infid = 1, 1
+    for line in [l.strip() for l in input]:
+        if line.startswith("Immune System"):
+            immune = True
+            continue
+        elif line.startswith("Infection"):
+            immune = False
+            infection = True
+            continue
+        elif line.isspace() or line == "":
+            continue
 
-imm = [dict(g) for g in immunearmy]
-inf = [dict(g) for g in infectionarmy]
-part1 = do_battle(imm, inf)
-print("Part 1: Winner has", part1[1], "units left")
+        match = rr.split(line)
+        immuneto = []
+        weakto = []
+        if match[4] != None:
+            parts = [p.strip() for p in match[4].strip().split(';')]
+            for part in parts:
+                if part.startswith("weak to"):
+                    ww = [p.strip() for p in part[8:].strip().split(',')]
+                    weakto.extend(ww)
+                else:
+                    ii = [p.strip() for p in part[10:].strip().split(',')]
+                    immuneto.extend(ii)
+        group = {
+            "groupType": "immune" if immune else "infection",
+            "groupId": immid if immune else infid,
+            "units": int(match[1]),
+            "hp": int(match[2]),
+            "damage": int(match[5]),
+            "damageType": match[6],
+            "initiative": int(match[7]),
+            "conditions": match[4],
+            "weakTo": weakto,
+            "immuneTo": immuneto,
+            "power": int(match[1]) * int(match[5]),
+            "target": False,
+        }
+        if immune:
+            immunearmy.append(group)
+            immid += 1
+        elif infection:
+            infectionarmy.append(group)
+            infid += 1
 
-part2 = (False, 0)
-boost = 24
-while part2[0] == False:
-    boost += 1
-    army1 = [dict(g) for g in immunearmy]
-    army2 = [dict(g) for g in infectionarmy]
-    for group in army1: # Update damage and power
-        group["damage"] += boost
-        group["power"] = group["units"] * group["damage"]
+    return (immunearmy, infectionarmy)
 
-    part2 = do_battle(army1, army2)
 
-print("Part 2: Immune system wins with a boost of", boost, "and has", part2[1], "units left")
+def main():
+    immunearmy, infectionarmy = build_armies()
+
+    # Use proper/deep copies of the armies
+    imm = [dict(g) for g in immunearmy]
+    inf = [dict(g) for g in infectionarmy]
+    part1 = do_battle(imm, inf)
+    print("Part 1: Winner has", part1[1], "units left")
+
+    part2 = (False, 0)
+    boost = 0
+    while part2[0] == False:
+        boost += 1
+        # Get new copies of each army
+        army1 = [dict(g) for g in immunearmy]
+        army2 = [dict(g) for g in infectionarmy]
+        # Update damage and power by the boost amount
+        for group in army1:
+            group["damage"] += boost
+            group["power"] = group["units"] * group["damage"]
+
+        part2 = do_battle(army1, army2)
+
+    print("Part 2: Immune system wins with a boost of", boost, "and has", part2[1], "units left")
+
+
+if __name__ == "__main__":
+    main()
