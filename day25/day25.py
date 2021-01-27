@@ -8,29 +8,28 @@ def load_input(fname):
     result = []
     for line in f.readlines():
         m = rr.search(line)
-        result.append([int(x) for x in m.groups()])
+        v = [int(x) for x in m.groups()]
+        v.append(False) # add a boolean to indicate if this item has been allocated into a constellation
+        result.append(v)
     return result
 
 def get_constellation_count(points):
     result = 0
 
-    allocated = []
     while True:
         current = []
-        for point in points:
-            if point in allocated:
-                continue
-            current.append(point)
-            allocated.append(point)
-            break
-        if len(current) == 0: # no more left
+        start = next((p for p in points if not p[4]), None)
+        if start == None: # no more left
             return result
+        start[4] = True  # mark as allocated
+        current.append(start)
 
         more = True
+        # continually iterate through to find all points in range
         while more:
             anynew = False
             for point in points:
-                if point in current or point in allocated:
+                if point[4]: # already allocated
                     continue
                 # is it in range of the current constellation
                 inrange = False
@@ -41,11 +40,12 @@ def get_constellation_count(points):
                         anynew = True
                         break
                 if inrange:
-                    allocated.append(point)
+                    point[4] = True # mark as allocated
                     current.append(point)
-            if not anynew:
-                result += 1
-                more = False
+
+            if not anynew:   # nothing new found this time through
+                result += 1  # so increment the result
+                more = False # and start a new constellation
 
 
 
